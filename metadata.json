@@ -1,0 +1,6 @@
+{
+  "name": "Studio Aplikasi Digital",
+  "description": "Ruang kerja kreasi aplikasi interaktif dan modern.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
