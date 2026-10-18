@@ -19,6 +19,7 @@ import { RetroRawonWordmark } from './RawonLogo';
 interface HeaderProps {
   currentRole: UserRole;
   onRoleChange: (role: UserRole) => void;
+  onNavigatePath?: (path: string) => void;
   alerts: SystemAlert[];
   onOpenAlertsModal: () => void;
   onToggleMobileMenu?: () => void;
@@ -27,6 +28,7 @@ interface HeaderProps {
 export const Header: React.FC<HeaderProps> = ({
   currentRole,
   onRoleChange,
+  onNavigatePath,
   alerts,
   onOpenAlertsModal,
   onToggleMobileMenu,
@@ -34,11 +36,11 @@ export const Header: React.FC<HeaderProps> = ({
   const [showRoleDropdown, setShowRoleDropdown] = useState(false);
   const [showAlertDrawer, setShowAlertDrawer] = useState(false);
 
-  const roles: { role: UserRole; icon: React.ElementType; label: string }[] = [
-    { role: 'Allocation owner', icon: ShieldCheck, label: 'Allocation Owner (Admin)' },
-    { role: 'Koordinator wilayah', icon: UserCheck, label: 'Koordinator Wilayah' },
-    { role: 'Mentor', icon: GraduationCap, label: 'Mentor Riset' },
-    { role: 'Sekolah', icon: School, label: 'Sekolah Mitra' },
+  const roles: { role: UserRole; icon: React.ElementType; label: string; portalPath: string }[] = [
+    { role: 'Allocation owner', icon: ShieldCheck, label: 'Allocation Owner (Admin)', portalPath: '/dashboard' },
+    { role: 'Koordinator wilayah', icon: UserCheck, label: 'Koordinator Wilayah', portalPath: '/portal/koordinator' },
+    { role: 'Mentor', icon: GraduationCap, label: 'Mentor Riset', portalPath: '/portal/mentor' },
+    { role: 'Sekolah', icon: School, label: 'Sekolah Mitra', portalPath: '/portal/sekolah' },
   ];
 
   const rolePersonas: Record<UserRole, {
@@ -138,22 +140,27 @@ export const Header: React.FC<HeaderProps> = ({
                 <div className="px-3 py-1.5 text-[11px] font-semibold text-[#6c7a78] uppercase tracking-wider">
                   Simulasi Perspektif Pengguna
                 </div>
-                {roles.map(({ role, icon: Icon, label }) => (
-                  <button
+                {roles.map(({ role, icon: Icon, label, portalPath }) => (
+                  <a
                     key={role}
-                    onClick={() => {
+                    href={portalPath}
+                    onClick={(e) => {
+                      e.preventDefault();
                       onRoleChange(role);
+                      if (onNavigatePath) {
+                        onNavigatePath(portalPath);
+                      }
                       setShowRoleDropdown(false);
                     }}
-                    className={`w-full flex items-center gap-2.5 px-3 py-2 text-xs rounded-xl text-left transition-colors cursor-pointer ${
+                    className={`w-full flex items-center gap-2.5 px-3 py-2 text-xs rounded-xl text-left transition-colors cursor-pointer no-underline ${
                       currentRole === role
                         ? 'bg-[#ffebe4] text-[#ce4915] font-semibold'
                         : 'text-[#202b2a] hover:bg-[#f7f8f7]'
                     }`}
                   >
-                    <Icon className="w-4 h-4" />
+                    <Icon className="w-4 h-4 shrink-0" />
                     <span>{label}</span>
-                  </button>
+                  </a>
                 ))}
               </div>
             )}

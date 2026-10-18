@@ -15,6 +15,7 @@ import {
 
 import { RawonLogo } from './RawonLogo';
 import { UserRole } from '../types/rawon';
+import { getPathForTabAndRole } from '../router';
 
 export type NavigationTab = 
   | 'dashboard' 
@@ -28,7 +29,9 @@ export type NavigationTab =
 interface SidebarProps {
   currentTab: NavigationTab;
   currentRole: UserRole;
+  currentPath?: string;
   onSelectTab: (tab: NavigationTab) => void;
+  onNavigatePath?: (path: string) => void;
   onOpenSupportModal: () => void;
   isOpenMobile?: boolean;
   onCloseMobile?: () => void;
@@ -37,7 +40,9 @@ interface SidebarProps {
 export const Sidebar: React.FC<SidebarProps> = ({
   currentTab,
   currentRole,
+  currentPath,
   onSelectTab,
+  onNavigatePath,
   onOpenSupportModal,
   isOpenMobile = false,
   onCloseMobile,
@@ -82,21 +87,31 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
   const menuItems = getMenuItems();
 
+  const handleItemClick = (id: NavigationTab, path: string, isMobileView: boolean) => {
+    if (onNavigatePath) {
+      onNavigatePath(path);
+    } else {
+      onSelectTab(id);
+    }
+    if (isMobileView && onCloseMobile) onCloseMobile();
+  };
+
   const renderContent = (isMobileView = false) => (
     <div className="flex flex-col justify-between h-full">
       <div>
         {/* Brand Header */}
         <div className="flex items-center justify-between mb-6 px-1">
-          <div 
-            className="cursor-pointer hover:opacity-90 transition-opacity" 
-            onClick={() => {
-              onSelectTab('dashboard');
-              if (isMobileView && onCloseMobile) onCloseMobile();
+          <a 
+            href={currentRole === 'Allocation owner' ? '/dashboard' : getPathForTabAndRole('dashboard', currentRole)}
+            className="cursor-pointer hover:opacity-90 transition-opacity block" 
+            onClick={(e) => {
+              e.preventDefault();
+              handleItemClick('dashboard', getPathForTabAndRole('dashboard', currentRole), isMobileView);
             }}
             title="Ke Dashboard RAWON"
           >
             <RawonLogo size="md" showSubtitle={true} />
-          </div>
+          </a>
 
           {isMobileView && onCloseMobile && (
             <button
@@ -108,29 +123,32 @@ export const Sidebar: React.FC<SidebarProps> = ({
           )}
         </div>
 
-        {/* Navigation Links */}
-        <nav className="space-y-1.5">
+        {/* Navigation Links with real hrefs for MPA URL support */}
+        <nav className="space-y-1.5" aria-label="Navigasi Halaman Utama">
           {menuItems.map(({ id, label, icon: Icon }) => {
+            const path = getPathForTabAndRole(id, currentRole);
             const isActive = currentTab === id;
             return (
-              <button
+              <a
                 key={id}
-                onClick={() => {
-                  onSelectTab(id);
-                  if (isMobileView && onCloseMobile) onCloseMobile();
+                href={path}
+                onClick={(e) => {
+                  e.preventDefault();
+                  handleItemClick(id, path, isMobileView);
                 }}
-                className={`w-full flex items-center gap-3.5 px-4 py-3 rounded-xl text-sm font-medium transition-all text-left cursor-pointer ${
+                className={`w-full flex items-center gap-3.5 px-4 py-3 rounded-xl text-sm font-medium transition-all text-left cursor-pointer no-underline ${
                   isActive
                     ? 'bg-[#ce4915] text-white font-semibold shadow-md shadow-[#ce4915]/25'
                     : 'text-[#6c7a78] hover:bg-[#f7f8f7] hover:text-[#202b2a]'
                 }`}
+                title={`${label} (${path})`}
               >
-                <Icon className={`w-5 h-5 ${isActive ? 'text-white' : 'text-[#6c7a78]'}`} />
-                <span>{label}</span>
+                <Icon className={`w-5 h-5 shrink-0 ${isActive ? 'text-white' : 'text-[#6c7a78]'}`} />
+                <span className="truncate">{label}</span>
                 {id === 'disruptions' && (
-                  <span className="ml-auto w-2 h-2 rounded-full bg-[#ff9900]" />
+                  <span className="ml-auto w-2 h-2 rounded-full bg-[#ff9900] shrink-0" />
                 )}
-              </button>
+              </a>
             );
           })}
         </nav>

@@ -13,6 +13,8 @@ import { ContactModal } from './components/ContactModal';
 import { CoordinatorView } from './components/roles/CoordinatorView';
 import { MentorPortalView } from './components/roles/MentorPortalView';
 import { SchoolPortalView } from './components/roles/SchoolPortalView';
+import { Link2, Check } from 'lucide-react';
+import { useAppRouter, getPathForTabAndRole } from './router';
 import { 
   ALL_70_MENTORS, 
   PILOT_20_TEAMS, 
@@ -70,6 +72,33 @@ const generateFull120Teams = (): ResearchTeam[] => {
 export default function App() {
   const [currentTab, setCurrentTab] = useState<NavigationTab>('dashboard');
   const [currentRole, setCurrentRole] = useState<UserRole>('Allocation owner');
+  const [copySuccess, setCopySuccess] = useState(false);
+
+  // Synchronize state with URL via useAppRouter
+  const handleRouterNavigate = React.useCallback((tab: NavigationTab, role?: UserRole) => {
+    setCurrentTab(tab);
+    if (role) {
+      setCurrentRole(role);
+    }
+  }, []);
+
+  const { currentPath, currentConfig, navigateTo } = useAppRouter(
+    currentTab,
+    currentRole,
+    handleRouterNavigate
+  );
+
+  const handleTabChange = (tab: NavigationTab) => {
+    const targetPath = getPathForTabAndRole(tab, currentRole);
+    navigateTo(targetPath);
+  };
+
+  const handleRoleChange = (newRole: UserRole) => {
+    setCurrentRole(newRole);
+    const targetPath = getPathForTabAndRole('dashboard', newRole);
+    navigateTo(targetPath);
+  };
+
   const [mentors, setMentors] = useState<Mentor[]>(ALL_70_MENTORS);
   const [teams, setTeams] = useState<ResearchTeam[]>(generateFull120Teams());
   const [alerts, setAlerts] = useState<SystemAlert[]>(SYSTEM_ALERTS);
@@ -245,8 +274,12 @@ export default function App() {
       <Sidebar
         currentTab={currentTab}
         currentRole={currentRole}
-        onSelectTab={setCurrentTab}
+        currentPath={currentPath}
+        onSelectTab={handleTabChange}
+        onNavigatePath={(path) => navigateTo(path)}
         onOpenSupportModal={() => setIsContactModalOpen(true)}
+        isOpenMobile={isMobileSidebarOpen}
+        onCloseMobile={() => setIsMobileSidebarOpen(false)}
       />
 
       {/* Main Content Area */}
@@ -254,16 +287,15 @@ export default function App() {
         {/* Top Header with dynamic role persona */}
         <Header
           currentRole={currentRole}
-          onRoleChange={(newRole) => {
-            setCurrentRole(newRole);
-            setCurrentTab('dashboard'); // reset to role's primary dashboard
-          }}
+          onRoleChange={handleRoleChange}
+          onNavigatePath={(path) => navigateTo(path)}
           alerts={alerts}
-          onOpenAlertsModal={() => setCurrentTab('disruptions')}
+          onOpenAlertsModal={() => navigateTo('/gangguan')}
+          onToggleMobileMenu={() => setIsMobileSidebarOpen((prev) => !prev)}
         />
 
         {/* Role Context & Permissions Notification Bar */}
-        <div className="bg-[#fff2dc] border-b border-[#ff9900]/30 px-8 py-2.5 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs text-[#9b6200]">
+        <div className="bg-[#fff2dc] border-b border-[#ff9900]/30 px-4 sm:px-8 py-2.5 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs text-[#9b6200]">
           <div className="flex items-center gap-2">
             <span className="w-2 h-2 rounded-full bg-[#ff9900] animate-pulse" />
             <span>
@@ -278,7 +310,7 @@ export default function App() {
             </span>
           </div>
           <button
-            onClick={() => setCurrentTab('reports')}
+            onClick={() => navigateTo('/laporan')}
             className="text-[11px] font-bold text-[#ce4915] hover:underline shrink-0 text-left cursor-pointer"
           >
             Lihat Matriks Peran Lengkap →
@@ -287,6 +319,59 @@ export default function App() {
 
         {/* Tab Content depending on role & tab */}
         <main className="flex-1 p-3.5 sm:p-6 lg:p-8 max-w-[1500px] w-full mx-auto">
+          {/* Dynamic Breadcrumbs & URL Bar for MPA Experience */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6 pb-3 border-b border-[#e3e9e7]">
+            <div className="flex items-center flex-wrap gap-2 text-xs">
+              <nav className="flex items-center gap-1.5 text-[#6c7a78]" aria-label="Breadcrumb">
+                <a
+                  href="/dashboard"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    navigateTo('/dashboard');
+                  }}
+                  className="hover:text-[#ce4915] transition-colors font-medium flex items-center gap-1"
+                >
+                  <span>RAWON</span>
+                </a>
+                {currentConfig.breadcrumb.map((crumb, idx) => {
+                  const isLast = idx === currentConfig.breadcrumb.length - 1;
+                  return (
+                    <React.Fragment key={crumb}>
+                      <span className="text-[#a4b3b1]">/</span>
+                      <span className={isLast ? 'font-semibold text-[#202b2a]' : 'hover:text-[#ce4915] cursor-pointer'}>
+                        {crumb}
+                      </span>
+                    </React.Fragment>
+                  );
+                })}
+              </nav>
+              <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-[#e1f4f0] text-[#117d78] border border-[#117d78]/20">
+                {currentConfig.badge}
+              </span>
+            </div>
+
+            {/* Active Canonical URL Pill with Copy Link */}
+            <div className="flex items-center gap-2 self-start sm:self-auto">
+              <div className="flex items-center gap-1.5 px-3 py-1 bg-white border border-[#e3e9e7] rounded-lg text-xs font-mono text-[#6c7a78] shadow-2xs">
+                <span className="w-1.5 h-1.5 rounded-full bg-[#117d78]" />
+                <span className="font-semibold text-[#202b2a]">{currentPath}</span>
+              </div>
+              <button
+                onClick={() => {
+                  if (typeof window !== 'undefined') {
+                    navigator.clipboard?.writeText(window.location.href);
+                    setCopySuccess(true);
+                    setTimeout(() => setCopySuccess(false), 2000);
+                  }
+                }}
+                className="p-1.5 px-2.5 bg-white hover:bg-[#f7f8f7] border border-[#e3e9e7] rounded-lg text-[11px] font-medium text-[#202b2a] transition-colors cursor-pointer flex items-center gap-1"
+                title="Salin tautan halaman ini"
+              >
+                {copySuccess ? <Check className="w-3.5 h-3.5 text-[#117d78]" /> : <Link2 className="w-3.5 h-3.5 text-[#6c7a78]" />}
+                <span>{copySuccess ? 'Tersalin!' : 'Salin URL'}</span>
+              </button>
+            </div>
+          </div>
           {/* KOORDINATOR WILAYAH SPECIFIC VIEWS */}
           {currentRole === 'Koordinator wilayah' && (
             <>
@@ -411,7 +496,7 @@ export default function App() {
                   alerts={alerts}
                   activities={activities}
                   recentAllocations={teams}
-                  onNavigate={setCurrentTab}
+                  onNavigate={handleTabChange}
                   onSolveOptimization={handleRunAutoSolve}
                   isSolving={isSolving}
                 />
